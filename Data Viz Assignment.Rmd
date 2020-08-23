@@ -1,0 +1,461 @@
+---
+title: 'Data Viz Assignment: Student Loan Debt Over Time'
+author: "Derek Li"
+date: '2020-02-26'
+output:
+  html_document:
+    df_print: paged
+    code_folding: hide
+    keep_md: true
+---
+
+```{r Setup, include=FALSE, results='hide', warning=FALSE}
+library(knitr)
+library(svglite)
+opts_chunk$set(fig.path="figures/",
+               cache.path="cache/",
+               cache=FALSE,
+               echo=TRUE,
+               message=FALSE,
+               warning=FALSE,
+               dev = "svg")  
+```  
+
+# Setup
+
+Load relevant packages:
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(tidyr)
+library(readr)
+library(janitor)
+library(plotly)
+library(DT)
+library(ggrepel)
+library(stringr)
+library(RColorBrewer)
+```
+
+
+Import dataset and clean variable names:
+
+```{r results='hide'}
+debt_data <- read_csv("data/survey_SCF.txt") %>% clean_names()
+```
+
+Define a custom theme:
+
+```{r}
+theme_custom <- function () {
+  theme_classic(base_size = 10, base_family = "Arial") %+replace%
+    theme(
+      axis.line = element_line(color = "gray20"),
+      axis.ticks = element_blank(),
+      axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0), 
+                                  angle = 90,
+                                  size = 10,
+                                  color = "gray25"),
+      axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0),
+                                  size = 10,
+                                  color = "gray25"),
+      axis.text = element_text(size = 12, color = "gray25"),
+      plot.title = element_text(margin = margin(t = 0, r = 0, b = 25, l = 0), 
+                                hjust = 0, 
+                                size = 15, 
+                                face = "bold",
+                                color = "gray25"),
+      legend.position = "top",
+      legend.justification = "left",
+      legend.direction = "horizontal",
+      legend.box.margin = margin(t = -10),
+      plot.caption = element_text(margin = margin(t = 10),
+                                  color = "gray25",
+                                  hjust = 0,
+                                  size = 8,
+                                  face = "italic")
+    )
+}
+```
+
+# Preface
+
+I want to preface this assignment by acknowledging that my charts and visualizations tend to be more minimalistic than not. The goal is to focus on the qualitative aspects and give readers a clear understanding of the big picture ideas. As such, people who want to dig into the details and numbers will likely have a harder time and be a bit disappointed.
+
+# 1. Debt Over Time
+
+The first chart I include to visualize debt over time is a simple double line graph. One line looks at household debt and the other looks at household income. Though simple, the idea is clear: while at one point median income was higher than median debt among households with debt, debt has now surpassed income.
+
+```{r fig1_debt_over_time}
+p1_data <-debt_data %>%
+  filter(hdebt == 1) %>%
+  mutate(year = as.factor(year)) %>%
+  group_by(year) %>%
+  summarize(median_debt = median(debt)/1000,
+            median_inc = median(income)/1000)
+  
+p1 <- ggplot(p1_data, aes(x = year, y = median_debt, group = 1)) +
+  geom_line(size = 1.5, color = "#48C9B0") +
+  geom_line(aes(x = year, y = median_inc, group = 1), size = 1.5, color = "#EC12B0") +
+  geom_text(data = p1_data %>% filter(year == 2016),
+            aes(y = median_debt, label = "Debt"),
+            color = "#48C9B0",
+            fontface = "bold",
+            vjust = -1) + 
+  geom_text(data = p1_data %>% filter(year == 2016),
+            aes(y = median_inc, label = "Income"),
+            color = "#EC12B0",
+            fontface = "bold",
+            vjust = 2.3) + 
+  scale_y_continuous(labels = function(y) paste0("$", y, "K")) +
+  labs(title = str_wrap("Median Household Debt Has Outpaced Median Household Income", width = 30),
+       y = "2016 Dollars",
+       caption = "Median calculations exclude households without debt.") +
+  theme_custom() +
+  theme(axis.title.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray87"))
+
+p1
+```
+
+This next chart is a simple barchart and is (hopefully) quite straightforward. It should speak to the idea that student debt has become more prevalent and, by extension, more important over time. Readers should have no trouble seeing that the share of households with student debt has increased over time.
+
+```{r fig2_pct_stu_debt_over_time}
+p2<- debt_data %>%
+  mutate(year = as.factor(year), has_educ_debt = ifelse(edn_inst > 0, 1, 0)) %>%
+  group_by(year) %>%
+  summarize(pct_debt = mean(has_educ_debt)) %>%
+  ggplot(aes(x = year, y = pct_debt)) +
+  geom_col(width = 0.8, color = "#48C9B0", fill = "#48C9B0") +
+  expand_limits(y = 0) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     expand = c(0, 0)) +
+  labs(title = str_wrap("The Percent of Households with Student Debt Has Gone Up Over Time", width = 40),
+       y = "Households with Student Debt") +
+  theme_custom() +
+  theme(axis.title.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray87"))
+
+p2
+```
+
+The last chart for this section is my attempt at a slopegraph. I think there are two takeaways here: (1) student debt has gone up since 1989 while this is not necessarily the case for other sources of debt, and (2) student debt is the second highest type of debt in 2016. The color scheme should help readers immediately see and focus on the line for student debt. Unfortunately, the title is a bit weak since I couldn't think of a way to distill everything I wanted to say into a relatively simple line.
+
+```{r fig3_slopegraph}
+slopegraph_data <- debt_data %>%
+  filter(hdebt == 1) %>%
+  mutate(year = as.factor(year)) %>%
+  select(year, edn_inst, nh_mort, veh_inst, ccbal) %>%
+  mutate_all(~replace(., . == 0, NA)) %>%
+  pivot_longer(-year, names_to = "debt_type", values_to = "amount") %>%
+  group_by(year, debt_type) %>%
+  summarize(med_debt = median(amount, na.rm = TRUE)/1000) %>%
+  filter(year %in% c(1989, 2016)) %>%
+  mutate(debt_type = factor(debt_type, 
+                            levels = c("edn_inst", "nh_mort", "veh_inst", "ccbal"),
+                            labels = c("Student Debt", "Mortgage Debt", "Car Debt", "Credit Card Debt")))
+
+p3 <- ggplot(slopegraph_data %>% filter(debt_type != "Student Debt"), aes(x = year, y = med_debt, group = debt_type)) +
+  geom_line(size = 1, color = "gray") +
+  geom_point(size = 2, color = "gray") +
+  geom_line(slopegraph_data %>% filter(debt_type == "Student Debt"), 
+            mapping = aes(x = year, y = med_debt, group = debt_type),
+            size = 1,
+            color = "#48C9B0") +
+  geom_point(slopegraph_data %>% filter(debt_type == "Student Debt"), 
+             mapping = aes(x = year, y = med_debt, group = debt_type),
+             size = 2,
+             color = "#48C9B0") +
+  scale_x_discrete(position = "top") +
+  geom_text_repel(slopegraph_data %>% filter(year == 2016 & debt_type != "Student Debt"), 
+                  mapping = aes(label = paste0(debt_type,": $", med_debt, "K")),
+                  hjust = "left",
+                  fontface = "bold",
+                  size = 3,
+                  nudge_x = 0.05,
+                  segment.color = NA,
+                  color = "gray") +
+  geom_text_repel(slopegraph_data %>% filter(year == 2016 & debt_type == "Student Debt"), 
+                  mapping = aes(label = paste0(debt_type,": $", med_debt, "K")),
+                  hjust = "left",
+                  fontface = "bold",
+                  size = 3,
+                  nudge_x = 0.05,
+                  segment.color = NA,
+                  color = "#48C9B0") +
+  labs(title = str_wrap("Different Types of Debt Over Time", width = 35),
+       x = "",
+       y = "",
+       caption = "Median calculations exclude households without a given type of debt.") +
+  theme_custom() +
+  theme(legend.position = "none",
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.y = element_text(color = "white"))
+
+p3
+```
+
+
+# 2. Tell Me Who You Are
+
+This first chart is a boxplot and a departure from my more simple and interpretable visualizations. It would not be a stretch to say that I threw this one in for the sake of variety. That said, it's still pretty clear that the households with higher levels of student debt tend to fall in the "College Degree" category.
+
+```{r fig4_boxplot}
+p4 <- debt_data %>%
+  filter(year == 2016 & edn_inst > 0) %>%
+  mutate(edn_inst = edn_inst/1000,
+         edcl = factor(edcl, 
+                       levels = c(1, 2, 3, 4), 
+                       labels = c(str_wrap("No High School Diploma/GED", width = 15),
+                                  str_wrap("High School Diploma or GED", width = 15),
+                                  "Some College",
+                                  "College Degree"))) %>%
+  ggplot(aes(x = edcl, y = edn_inst)) +
+  geom_boxplot(fill =  "#037BAA")  +
+  scale_y_continuous(expand = c(0, 0), 
+                     limits = c(0, 500),
+                     labels = function(y) paste0("$", y, "K")) +
+  labs(title = str_wrap("Households with More Education Have Higher Median Student Debt in 2016", 
+                        width = 35),
+       y = "2016 Dollars",
+       caption = "Median calculations exclude households without student debt.") +
+  theme_custom() +
+  theme(axis.title.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray87"))
+
+p4
+```
+
+It was previously established that households with a college degree have more student debt, and the following horizontal side-by-side bar chart delves into this a little bit more. Here, I compare the student debt of Black households with that of White households across three levels of higher educational attainment: bachelor's degree, master's degree, and doctoral degree. Black households have more debt in every case, and the color scheme and selective inclusion of data points should help drive this point home.
+
+```{r fig5_stu_debt_by_race_and_edu}
+p5_data <- debt_data %>%
+  filter(year == 2016 & edn_inst > 0 & educ >= 12 & race <= 2) %>%
+  mutate(educ = factor(educ, 
+                       levels = c(14, 13, 12), 
+                       labels = c(str_wrap("Doctoral Degree", width = 10), 
+                                  str_wrap("Master's Degree", width = 10), 
+                                  str_wrap("Bachelor's Degree", width = 10))), 
+         race = factor(race,
+                       levels = c(1, 2), 
+                       labels = c("White Non-Hispanic", "Black"))) %>%
+  group_by(educ, race) %>%
+  summarize(med_debt = median(edn_inst)/1000)
+
+p5 <- ggplot(p5_data, aes(x = educ, y = med_debt, fill = race)) +
+  scale_fill_manual(values = c(alpha("#A6C4CF", 0.5), "#037BAA")) +
+  geom_col(position = position_dodge2(reverse = TRUE), width = 0.65) +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 110)) +
+  geom_text(data = p5_data %>% filter(race == "Black"),
+            aes(x = educ, y = med_debt, label = paste0("$", med_debt, "K")), 
+            position = position_dodge2(reverse = TRUE),
+            vjust = 2.0,
+            hjust = -0.2,
+            color = "#037BAA",
+            fontface = "bold") +
+  labs(title = str_wrap("Black Households Have Higher Median Student Debt Than White Households At Higher Levels of Education in 2016", width = 40),
+       y = "Thousands of 2016 Dollars",
+       fill = "Race",
+       caption = "Median calculations exclude households without student debt.") +
+  coord_flip() +
+  theme_custom() +
+  theme(axis.title.y = element_blank(),
+        legend.key.size = unit(1, "line"),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.line = element_blank())
+
+p5
+```
+
+# 3. Wealth and Income Distribution
+
+I guess I'm getting a little lazy as there's only one visualization for this section. It's a simple bar chart here and the color will draw readers to the highest income percentile group and help get my story across. In case you haven't noticed, I'm a pretty big fan of bars. They're just so versatile and easy to interpret.
+
+```{r fig6_stu_debt_by_inccat}
+p6 <- debt_data %>%
+  filter(year == 2016 & edn_inst > 0) %>%
+  mutate(inccat = factor(inccat,
+                         levels = c(1, 2, 3, 4, 5, 6),
+                         labels = c("Less than 20",
+                                    "20-39.9",
+                                    "40-59.9",
+                                    "60-79.9",
+                                    "80-89.9",
+                                    "90-100"))) %>%
+  group_by(inccat) %>%
+  summarize(med_debt = median(edn_inst)/1000) %>%
+  ggplot(aes(x = inccat, y = med_debt, fill = inccat)) +
+  geom_col(width = 0.65) +
+  scale_fill_manual(values = c("gray", "gray", "gray", "gray", "gray", "#EC6411")) +
+  scale_y_continuous(expand = c(0, 0),
+                     labels = function(y) paste0("$", y, "K")) +
+  labs(title = str_wrap("The Highest Income Percentile Group Has the Highest 2016 Median Student Debt",
+                        width = 40),
+       x = "Income Percentile",
+       y = "2016 Dollars",
+       caption = "Median calculations exclude households without student debt.") +
+  theme_custom() +
+  theme(panel.grid.major.y = element_line(color = "gray87"),
+        legend.position = "None")
+
+p6
+```
+
+
+# 4. Going Broke
+
+My second to last chart is a 100% stacked bar chart. I don't love these kinds of charts as it can be a bit hard to compare data across the different bars. That said, I wanted to display the composition of total debt over time for households that declared bankruptcy in the last 5 years, and I thought this would be a decent way to do so. Student debt has been strategically positioned at the bottom so that it's easy to see how it occupies a larger portion every year, and so that's easy to compare over time. I guess one plus is that the array of colors look nice (in my opinion).
+
+```{r fig7_bnkrupt}
+p7 <- debt_data %>%
+  filter(hdebt == 1 & bnkruplast5 == 1) %>%
+  mutate(year = as.factor(year)) %>%
+  select(year, edn_inst, nh_mort, veh_inst, ccbal) %>%
+  pivot_longer(-year, names_to = "debt_type", values_to = "amount") %>%
+  mutate(debt_type = factor(debt_type, 
+                            levels = c("nh_mort", "veh_inst", "ccbal", "edn_inst"),
+                            labels = c("Mortgage Debt", 
+                                       "Car Debt", 
+                                       "Credit Card Debt", 
+                                       "Student Debt"))) %>%
+  group_by(year, debt_type) %>%
+  summarize(total_debt = sum(amount)) %>%
+  ggplot(aes(x = year, y = total_debt, fill = debt_type)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(expand = c(0, 0),
+                     labels = scales::percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c(alpha("#DAF7A6", 0.5), alpha("#FFC300", 0.5), alpha("#FF5733", 0.5), "#85C1E9")) +
+  labs(title = str_wrap("Among Households That Declared Bankruptcy In the Last 5 Years, 
+                        Student Debt Plays an Increasingly Larger Role", 
+                        width = 40),
+       fill = "Debt Type",
+       caption = "Calculations exclude households without debt and are based on 2016 dollars.") +
+  theme_custom() + 
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.key.size = unit(1, "line"))
+
+p7
+```
+
+Finally, we come to my last chart, and I wanted to try something different here. I wanted to try to visualize something without relying on position to a common scale, so I used color and size. Does this visual put form over function? Maybe. Are there better ways to do this? Absolutely. However, I think the reader can still see the story pretty easily: people who spend more on food have higher median debt.
+
+```{r fig8_food}
+p8_data <- debt_data %>%
+  filter(year == 2016 & hdebt == 1) %>%
+  mutate(total_food = foodhome + fooddelv + foodaway,
+         food_cat = case_when(
+           total_food < 6000 ~ "Less Than $6,000",
+           total_food >= 6000 & total_food < 12000 ~ "$6,000-$11,999",
+           total_food >= 12000 & total_food < 18000 ~ "$12,000-$17,999",
+           total_food >= 18000 ~ "$18,000+"
+         ),
+         food_cat = factor(food_cat,
+                           levels = c("Less Than $6,000",
+                                      "$6,000-$11,999",
+                                      "$12,000-$17,999",
+                                      "$18,000+"))) %>%
+  group_by(food_cat) %>%
+  summarize(med_debt = median(debt)/1000, total_counts = n())
+  
+p8 <- ggplot(p8_data, aes(x = food_cat, y = 100)) +
+  geom_point(aes(size = med_debt, color = factor(med_debt))) +
+  scale_color_manual(values = c("#D6C2F1", "#BD97F1", "#A469F2", "#8635F2")) +
+  geom_text_repel(data = p8_data %>% filter(food_cat == "Less Than $6,000"),
+                  aes(x = food_cat, 
+                      y = 100,
+                      label = paste0("$", round(med_debt), "K Debt")),
+                  segment.color = NA,
+                  direction = "y",
+                  hjust = 0.5,
+                  vjust = -2.5,
+                  size = 3) + 
+  geom_text_repel(data = p8_data %>% filter(food_cat == "$6,000-$11,999"),
+                  aes(x = food_cat, 
+                      y = 100,
+                      label = paste0("$", round(med_debt), "K Debt")),
+                  segment.color = NA,
+                  direction = "y",
+                  hjust = 0.5,
+                  vjust = -3.0,
+                  size = 4) +
+  geom_text_repel(data = p8_data %>% filter(food_cat == "$12,000-$17,999"),
+                  aes(x = food_cat, 
+                      y = 100,
+                      label = paste0("$", round(med_debt), "K Debt")),
+                  segment.color = NA,
+                  direction = "y",
+                  hjust = 0.5,
+                  vjust = -3.5,
+                  size = 5) + 
+  geom_text_repel(data = p8_data %>% filter(food_cat == "$18,000+"),
+                  aes(x = food_cat, 
+                      y = 100,
+                      label = paste0("$", round(med_debt), "K Debt")),
+                  segment.color = NA,
+                  direction = "y",
+                  hjust = 0.5,
+                  vjust = -4.0,
+                  size = 6) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 350)) +
+  scale_size_continuous(range = c(10, 35)) +
+  labs(title = str_wrap("2016 Median Debt is Higher Among Households Who Spend More on Food", width = 40),
+       x = "Annual Food Expenditure",
+       y = "",
+       caption = "Median calculations exclude households without debt.") +
+  theme_custom() +
+  theme(legend.position = "None",
+        axis.line = element_blank(),
+        axis.text.x = element_text(size = 12),
+        axis.title.x = element_text(size = 12),
+        axis.text.y = element_text(color = "white"))
+
+p8
+```
+
+
+# 5. Make Two Plots Interactive
+
+Adding interactivity to my boxplot and 100% stacked bar chart could be particularly helpful for readers. I believe that these two plots are among the hardest to quickly interpret while hiding a lot of data points that someone might want to see. For the boxplot, the interactivity allows readers to see the different components and values of the boxplot without relying on the y-axis to eyeball numbers. For the 100% stacked bar chart, readers can see total debt values and make accurate comparisons across years for car debt and credit card debt. 
+
+Unfortunately, the titles get a little wonky when I make the plots interactive so I did not include them.
+
+```{r}
+ggplotly(p4) %>% layout(title = FALSE)
+```
+
+```{r}
+ggplotly(p7) %>%
+  layout(legend = list(orientation = "h", y = 1.1 , x = 0),
+         title = FALSE)
+```
+
+# 6. Data Table
+
+I would like to include a data table with information on median debt by year, highest degree earned, and race. I believe that the intersection of race, education, and debt is an interesting and persistently relevant topic in today's U.S. political climate. I also believe that this is data that people would want to explore more in detail. Only higher levels of educational attainment are included (bachelor's, master's, doctoral).
+
+```{r}
+debt_data %>%
+  filter(edn_inst > 0 & educ >= 12) %>%
+  mutate(educ = factor(educ, 
+                       levels = c(14, 13, 12), 
+                       labels = c("Doctoral Degree", 
+                                  "Master's Degree", 
+                                  "Bachelor's Degree")), 
+         race = factor(race,
+                       levels = c(1, 2, 3, 5), 
+                       labels = c("White Non-Hispanic", "Black", "Hispanic", "Other"))) %>%
+  group_by(year, educ, race) %>%
+  summarize(med_debt = round(median(edn_inst), 2)) %>%
+  arrange(year, educ, race) %>%
+  datatable(
+    rownames = FALSE,
+    colnames = c("Year", "Highest Degree Earned", "Race", "Median Debt"),
+    filter = "top",
+    options = list(columnDefs = list(list(className = 'dt-center', targets = "_all")))
+  )
+```
