@@ -1,6 +1,8 @@
-# Assignment 1 - Student Loan Debt Over Time
+# Data Viz Assignment - Student Loan Debt Over Time
 
-This directory contains all my files associated with this first assignment: my R Markdown file, the resulting HTML file, and other related files and figures.
+This directory contains all my files associated with this an assignment from a data visualization course I took during my time at Columbia University's QMSS program.
+
+To quickly see the HTML file, (follow this link)[https://rawcdn.githack.com/dsl2166/data-viz-assignment/f12c9f7cb5bc9e9dc026cdbb9379338e7f698817/Data Viz Assignment.html].
 
 Below is an introduction to the assignment and a description of the data used, as written by the instructor (Thomas Bramboor). 
 
@@ -17,3 +19,5 @@ Provide polished plots that are refined enough to include in the magazine with v
 ## Data
 
 The main data comes from the Survey of Consumer Finances which is conducted every three years from 1989 onwards (last year in the data is 2016) and is provided as comma-separated text file, containing 55 variables for 238880 cases. The variables cover some details on household demographics, assets, debts, debt payments, income, net worth, and expenditures.
+
+Note that the data file itself was too large to include.
