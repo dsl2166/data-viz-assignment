@@ -1,7 +1,6 @@
 ---
 title: 'Data Viz Assignment: Student Loan Debt Over Time'
 author: "Derek Li"
-date: '2020-02-26'
 output:
   html_document:
     df_print: paged
