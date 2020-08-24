@@ -1,6 +1,8 @@
-# Assignment 1 - Student Loan Debt Over Time
+# Data Viz Assignment - Student Loan Debt Over Time
 
-This directory contains all my files associated with this first assignment: my R Markdown file, the resulting HTML file, and other related files and figures.
+This directory contains all my files associated with an assignment from a data visualization course that I took during my time in Columbia University's QMSS program. The assignment was light on analysis since the focus was on data visualization. It was a good opportunity to experiment with the data visualization capabilities of R.
+
+To quickly view the the associated HTML file, [click here](https://rawcdn.githack.com/dsl2166/data-viz-assignment/807a1603c1301c593dc20629459545191a6b7cbf/Data Viz Assignment.html).
 
 Below is an introduction to the assignment and a description of the data used, as written by the instructor (Thomas Bramboor). 
 
