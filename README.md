@@ -2,7 +2,7 @@
 
 This directory contains all my files associated with this an assignment from a data visualization course I took during my time at Columbia University's QMSS program.
 
-To quickly see the HTML file, [follow this link](https://rawcdn.githack.com/dsl2166/data-viz-assignment/f12c9f7cb5bc9e9dc026cdbb9379338e7f698817/Data Viz Assignment.html).
+To quickly see the HTML file, [follow this link](https://rawcdn.githack.com/dsl2166/data-viz-assignment/29b51dfec8b9d98763ba51678f1891683a163dae/Data-Viz-Assignment.html).
 
 Below is an introduction to the assignment and a description of the data used, as written by the instructor (Thomas Bramboor). 
 
