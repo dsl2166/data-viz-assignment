@@ -1,6 +1,6 @@
 # Data Viz Assignment - Student Loan Debt Over Time
 
-This directory contains all my files associated with this an assignment from a data visualization course I took during my time at Columbia University's QMSS program.
+This directory contains all my files associated with this an assignment from a data visualization course I took during my time at Columbia University's QMSS program. Everything was done using R.
 
 To quickly see the HTML file, [follow this link](https://rawcdn.githack.com/dsl2166/data-viz-assignment/29b51dfec8b9d98763ba51678f1891683a163dae/Data-Viz-Assignment.html).
 
